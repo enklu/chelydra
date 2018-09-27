@@ -3,6 +3,7 @@ using System.Net.WebSockets;
 using Akka.Actor;
 using PureWebSockets;
 using Serilog;
+using Newtonsoft.Json;
 
 namespace CreateAR.Snap
 {
@@ -13,6 +14,10 @@ namespace CreateAR.Snap
             public string Url;
 
             public string Token;
+
+            public string InstanceId;
+
+            public string UserId;
 
             public IActorRef Subscriber;
         }
@@ -28,6 +33,10 @@ namespace CreateAR.Snap
         }
 
         private string _token;
+
+        private string _instanceId;
+
+        private string _userId;
 
         private IActorRef _subscriber;
 
@@ -71,9 +80,27 @@ namespace CreateAR.Snap
             _subscriber.Tell(new Ready());
         }
 
+        private void Send(WebSocketRequest request)
+        {
+            if (null == request.Headers)
+            {
+                request.Headers = new WebSocketRequest.HeaderData();
+            }
+            request.Headers.Authorization = $"Bearer {_token}";
+
+            var json = $"42[\"post\", {JsonConvert.SerializeObject(request)}]";
+            Log.Information($"Sending {json}.");
+            if (!_socket.Send(json))
+            {
+                Log.Warning("Could not send!");
+            }
+        }
+
         private void OnConnect(Connect msg)
         {
             _token = msg.Token;
+            _instanceId = msg.InstanceId;
+            _userId = msg.UserId;
             _subscriber = msg.Subscriber;
 
             Become(Connecting);
@@ -99,11 +126,15 @@ namespace CreateAR.Snap
         private void Socket_OnSendFailed(string data, Exception ex)
         {
             Log.Warning("Could not send message: {0} -> {1}.", data, ex);
+
+            // TODO: tell parent
         }
 
         private void Socket_OnClosed(WebSocketCloseStatus reason)
         {
             Log.Information("Socket closed : {0}.", reason);
+
+            // TODO: reconnect
         }
 
         private void Socket_OnMessage(string message)
@@ -120,7 +151,10 @@ namespace CreateAR.Snap
             if (newState == WebSocketState.Open)
             {
                 // subscribe to trellis events
-
+                Send(new WebSocketRequest(
+                    $"/v1/snap/{_instanceId}/{_userId}/subscribe",
+                    "post"
+                ));
             }
         }
     }
