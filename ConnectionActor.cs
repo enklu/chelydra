@@ -27,7 +27,12 @@ namespace CreateAR.Snap
             public string Url;
         }
 
-        public class Heartbeat
+        private class Heartbeat
+        {
+            //
+        }
+
+        private class Socket_Connected
         {
             //
         }
@@ -56,11 +61,7 @@ namespace CreateAR.Snap
 
         private void Connecting()
         {
-            if (null != _heartbeat)
-            {
-                _heartbeat.Cancel();
-                _heartbeat = null;
-            }
+            Receive<Socket_Connected>(msg => Become(Subscribed));
         }
 
         private void Subscribed()
@@ -116,46 +117,57 @@ namespace CreateAR.Snap
                     SendDelay = 100
                 });
 
-            _socket.OnStateChanged += Socket_OnStateChanged;
-            _socket.OnMessage += Socket_OnMessage;
-            _socket.OnClosed += Socket_OnClosed;
-            _socket.OnSendFailed += Socket_OnSendFailed;
+            _socket.OnStateChanged += Socket_OnStateChanged(Self);
+            _socket.OnMessage += Socket_OnMessage(Self);
+            _socket.OnClosed += Socket_OnClosed(Self);
+            _socket.OnSendFailed += Socket_OnSendFailed(Self);
             _socket.Connect();
         }
 
-        private void Socket_OnSendFailed(string data, Exception ex)
+        private SendFailed Socket_OnSendFailed(IActorRef connection)
         {
-            Log.Warning("Could not send message: {0} -> {1}.", data, ex);
+            return (string data, Exception ex) => {
+                Log.Warning("Could not send message: {0} -> {1}.", data, ex);
 
-            // TODO: tell parent
+                // TODO: tell parent
+            };
         }
 
-        private void Socket_OnClosed(WebSocketCloseStatus reason)
+        private Closed Socket_OnClosed(IActorRef connection)
         {
-            Log.Information("Socket closed : {0}.", reason);
+            return (WebSocketCloseStatus reason) => {
+                Log.Information("Socket closed : {0}.", reason);
 
-            // TODO: reconnect
+                // TODO: reconnect
+            };
         }
 
-        private void Socket_OnMessage(string message)
+        private Message Socket_OnMessage(IActorRef connection)
         {
-            Log.Information("Received message : {0}.", message);
+            return (string message) => {
+                Log.Information("Received message : {0}.", message);
+            };
         }
 
-        private void Socket_OnStateChanged(WebSocketState newState, WebSocketState prevState)
+        private StateChanged Socket_OnStateChanged(IActorRef connection)
         {
-            Log.Information("Socket stage change: {0} -> {1}.",
-                prevState,
-                newState);
-            
-            if (newState == WebSocketState.Open)
-            {
-                // subscribe to trellis events
-                Send(new WebSocketRequest(
-                    $"/v1/snap/{_instanceId}/{_userId}/subscribe",
-                    "post"
-                ));
-            }
+            return (WebSocketState newState, WebSocketState prevState) => {
+                Log.Information("Socket stage change: {0} -> {1}.",
+                    prevState,
+                    newState);
+                
+                if (newState == WebSocketState.Open)
+                {
+                    // subscribe to trellis events
+                    Send(new WebSocketRequest(
+                        $"/v1/snap/{_instanceId}/{_userId}/subscribe",
+                        "post"
+                    ));
+
+                    // TODO: wait for response before assuming success
+                    connection.Tell(new Socket_Connected());
+                }
+            };
         }
     }
 }
