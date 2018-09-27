@@ -11,6 +11,10 @@ namespace CreateAR.Snap
         public class Connect
         {
             public string Url;
+
+            public string Token;
+
+            public IActorRef Subscriber;
         }
 
         public class Ready
@@ -18,7 +22,18 @@ namespace CreateAR.Snap
             public string Url;
         }
 
+        public class Heartbeat
+        {
+            //
+        }
+
+        private string _token;
+
+        private IActorRef _subscriber;
+
         private PureWebSocket _socket;
+
+        private ICancelable _heartbeat;
 
         public ConnectionActor()
         {
@@ -32,11 +47,35 @@ namespace CreateAR.Snap
 
         private void Connecting()
         {
-            // 
+            if (null != _heartbeat)
+            {
+                _heartbeat.Cancel();
+                _heartbeat = null;
+            }
+        }
+
+        private void Subscribed()
+        {
+            // listen for a heartbeat
+            Receive<Heartbeat>(msg => _socket.Send("40"));
+
+            // start the heartbeat
+            _heartbeat = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(
+                TimeSpan.FromSeconds(0),
+                TimeSpan.FromSeconds(3),
+                Self,
+                new Heartbeat(),
+                null);
+
+            // tell subscriber we're ready!
+            _subscriber.Tell(new Ready());
         }
 
         private void OnConnect(Connect msg)
         {
+            _token = msg.Token;
+            _subscriber = msg.Subscriber;
+
             Become(Connecting);
 
             Log.Information("Starting connection to {0}.", msg.Url);
@@ -78,7 +117,11 @@ namespace CreateAR.Snap
                 prevState,
                 newState);
             
+            if (newState == WebSocketState.Open)
+            {
+                // subscribe to trellis events
 
+            }
         }
     }
 }

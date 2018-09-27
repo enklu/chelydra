@@ -28,7 +28,8 @@ namespace CreateAR.Snap
             // connect
             _connection.Tell(new ConnectionActor.Connect
             {
-                Url = "wss://trellis.enklu.com/socket.io/?nosession=true&__sails_io_sdk_version=1.2.1&__sails_io_sdk_platform=browser&__sails_io_sdk_language=javascript&EIO=3&transport=websocket"
+                Url = "wss://trellis.enklu.com:10001/socket.io/?nosession=true&__sails_io_sdk_version=1.2.1&__sails_io_sdk_platform=browser&__sails_io_sdk_language=javascript&EIO=3&transport=websocket",
+                Subscriber = Self
             });
         }
 
