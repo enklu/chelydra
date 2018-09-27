@@ -118,7 +118,7 @@ namespace CreateAR.Snap
                 });
 
             _socket.OnStateChanged += Socket_OnStateChanged(Self);
-            _socket.OnMessage += Socket_OnMessage(Self);
+            _socket.OnMessage += Socket_OnMessage(_subscriber);
             _socket.OnClosed += Socket_OnClosed(Self);
             _socket.OnSendFailed += Socket_OnSendFailed(Self);
             _socket.Connect();
@@ -142,9 +142,14 @@ namespace CreateAR.Snap
             };
         }
 
-        private Message Socket_OnMessage(IActorRef connection)
+        private Message Socket_OnMessage(IActorRef subscriber)
         {
-            return (string message) => {
+            return (string message) =>
+            {
+                // ignore heartbeats
+                if (message == "40") {
+                    return;
+                }
                 Log.Information("Received message : {0}.", message);
             };
         }
