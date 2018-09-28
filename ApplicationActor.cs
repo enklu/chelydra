@@ -4,7 +4,6 @@ using System;
 
 namespace CreateAR.Snap
 {
-
     public class ApplicationActor : ReceiveActor
     {
         public class Start
@@ -33,8 +32,7 @@ namespace CreateAR.Snap
             _connection.Tell(new ConnectionActor.Connect
             {
                 Url = "wss://trellis.enklu.com:10001/socket.io/?nosession=true&__sails_io_sdk_version=1.2.1&__sails_io_sdk_platform=browser&__sails_io_sdk_language=javascript&EIO=3&transport=websocket",
-                InstanceId = "foo",
-                UserId = "foo",
+                OrgId = "744d26da-959d-48ce-93b7-ec1071b39e24",
                 Subscriber = Self
             });
         }

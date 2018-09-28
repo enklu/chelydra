@@ -15,9 +15,7 @@ namespace CreateAR.Snap
 
             public string Token;
 
-            public string InstanceId;
-
-            public string UserId;
+            public string OrgId;
 
             public IActorRef Subscriber;
         }
@@ -39,9 +37,7 @@ namespace CreateAR.Snap
 
         private string _token;
 
-        private string _instanceId;
-
-        private string _userId;
+        private string _orgId;
 
         private IActorRef _subscriber;
 
@@ -100,8 +96,7 @@ namespace CreateAR.Snap
         private void OnConnect(Connect msg)
         {
             _token = msg.Token;
-            _instanceId = msg.InstanceId;
-            _userId = msg.UserId;
+            _orgId = msg.OrgId;
             _subscriber = msg.Subscriber;
 
             Become(Connecting);
@@ -151,6 +146,8 @@ namespace CreateAR.Snap
                 }
                 
                 Log.Information("Received message : {0}.", message);
+
+                // TODO: deserialize and forward
             };
         }
 
@@ -165,7 +162,7 @@ namespace CreateAR.Snap
                 {
                     // subscribe to trellis events
                     Send(new WebSocketRequest(
-                        $"/v1/snap/{_instanceId}/{_userId}/subscribe",
+                        $"/v1/snap/{_orgId}/sna[/subscribe",
                         "post"
                     ));
 
