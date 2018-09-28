@@ -42,8 +42,9 @@ namespace CreateAR.Snap
             Log.Information("Connection online.");
 
             // STUB
-            Context.System.Scheduler.ScheduleTellOnce(
+            Context.System.Scheduler.ScheduleTellRepeatedly(
                 TimeSpan.FromSeconds(1),
+                TimeSpan.FromSeconds(5),
                 _processor,
                 new ImageProcessingPipelineActor.StartPipeline
                 {

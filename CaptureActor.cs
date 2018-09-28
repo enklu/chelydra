@@ -32,9 +32,9 @@ namespace CreateAR.Snap
             }
 
             _watcher = new FileSystemWatcher(BASE_DIR);
-            _watcher.Filter = "*.jpg";
-            _watcher.NotifyFilter = NotifyFilters.LastWrite;
-            _watcher.Created += Watcher_OnCreated(Self);
+            _watcher.Filter = "*.*";
+            _watcher.NotifyFilter = NotifyFilters.CreationTime;
+            _watcher.Changed += Watcher_OnCreated(Self);
             _watcher.EnableRaisingEvents = true;
 
             Receive<ImageProcessingPipelineActor.Capture>(msg =>
@@ -47,9 +47,7 @@ namespace CreateAR.Snap
                 // start capture
                 var process = new Process();
                 process.StartInfo.FileName = "gphoto2";
-                process.StartInfo.Arguments = $"--capture-image-and-download --force-overwrite --filename={id}.jpg";
-                process.StartInfo.CreateNoWindow = true;
-                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.Arguments = $"--capture-image-and-download --force-overwrite --filename={BASE_DIR}/{id}.jpg";
                 process.Start();
             });
 
