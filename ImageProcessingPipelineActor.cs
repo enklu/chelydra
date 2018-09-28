@@ -7,7 +7,12 @@ namespace CreateAR.Snap
     {
         public struct SnapRecord
         {
+            public string SrcPath;
 
+            public SnapRecord(SnapRecord copy)
+            {
+                SrcPath = copy.SrcPath;
+            }
         }
 
         public class StartPipeline
