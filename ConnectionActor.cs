@@ -113,7 +113,6 @@ namespace CreateAR.Snap
                 msg.Url,
                 new PureWebSocketOptions
                 {
-                    DebugMode = true,
                     SendDelay = 100
                 });
 
@@ -150,6 +149,7 @@ namespace CreateAR.Snap
                 if (message == "40") {
                     return;
                 }
+                
                 Log.Information("Received message : {0}.", message);
             };
         }

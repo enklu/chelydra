@@ -1,8 +1,10 @@
 using Akka.Actor;
 using Serilog;
+using System;
 
 namespace CreateAR.Snap
 {
+
     public class ApplicationActor : ReceiveActor
     {
         public class Start
@@ -11,10 +13,12 @@ namespace CreateAR.Snap
         }
 
         private IActorRef _connection;
+        private IActorRef _processor;
 
         public ApplicationActor()
         {
             _connection = Context.ActorOf(Props.Create(() => new ConnectionActor()));
+            _processor = Context.ActorOf(Props.Create(() => new ImageProcessingPipelineActor()));
 
             Receive<Start>(msg => Become(Started));
         }
@@ -38,6 +42,17 @@ namespace CreateAR.Snap
         private void OnConnectionReady(ConnectionActor.Ready msg)
         {
             Log.Information("Connection online.");
+
+            // STUB
+            Context.System.Scheduler.ScheduleTellRepeatedly(
+                TimeSpan.FromSeconds(1),
+                TimeSpan.FromSeconds(5),
+                _processor,
+                new ImageProcessingPipelineActor.StartPipeline
+                {
+                    Snap = new ImageProcessingPipelineActor.SnapRecord()
+                },
+                null);
         }
     }
 }
