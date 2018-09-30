@@ -25,6 +25,15 @@ namespace CreateAR.Snap
             public string Url;
         }
 
+        public class TakeSnapMessage
+        {
+            [JsonProperty("type")]
+            public string Type;
+
+            [JsonProperty("instanceId")]
+            public string InstanceId;
+        }
+
         private class Heartbeat
         {
             //
@@ -147,7 +156,19 @@ namespace CreateAR.Snap
                 
                 Log.Information("Received message : {0}.", message);
 
-                // TODO: deserialize and forward
+                // deserialize and forward
+                try
+                {
+                    var msg = (TakeSnapMessage) JsonConvert.DeserializeObject(
+                        message,
+                        typeof(TakeSnapMessage));
+
+                    subscriber.Tell(msg);
+                }
+                catch (Exception exception)
+                {
+                    Log.Warning($"Could not deserialize message : {message} : {exception}.");
+                }
             };
         }
 

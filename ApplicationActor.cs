@@ -44,6 +44,15 @@ namespace CreateAR.Snap
             Log.Information("Starting application.");
 
             Receive<ConnectionActor.Ready>(msg => OnConnectionReady(msg));
+            Receive<ConnectionActor.TakeSnapMessage>(msg =>
+            {
+                Log.Information("Received TakeSnapMessage.");
+
+                _processor.Tell(new ImageProcessingPipelineActor.StartPipeline
+                {
+                    Snap = new ImageProcessingPipelineActor.SnapRecord()
+                });
+            });
 
             // connect
             _connection.Tell(new ConnectionActor.Connect
@@ -60,7 +69,7 @@ namespace CreateAR.Snap
             Log.Information("Connection online.");
 
             // STUB
-            Context.System.Scheduler.ScheduleTellRepeatedly(
+            /*Context.System.Scheduler.ScheduleTellRepeatedly(
                 TimeSpan.FromSeconds(1),
                 TimeSpan.FromSeconds(5),
                 _processor,
@@ -72,7 +81,7 @@ namespace CreateAR.Snap
                         InstanceId = _instanceId
                     }
                 },
-                null);
+                null);*/
         }
     }
 }
