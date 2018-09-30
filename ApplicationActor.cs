@@ -14,10 +14,27 @@ namespace CreateAR.Snap
         private IActorRef _connection;
         private IActorRef _processor;
 
-        public ApplicationActor()
+        private string _baseUrl;
+
+        private string _orgId;
+        private string _instanceId;
+        private string _token;
+
+        public ApplicationActor(
+            string baseUrl,
+            string orgId,
+            string instanceId,
+            string token)
         {
+            _baseUrl = baseUrl;
+            _orgId = orgId;
+            _instanceId = instanceId;
+            _token = token;
+
             _connection = Context.ActorOf(Props.Create(() => new ConnectionActor()));
-            _processor = Context.ActorOf(Props.Create(() => new ImageProcessingPipelineActor()));
+            _processor = Context.ActorOf(Props.Create(() => new ImageProcessingPipelineActor(
+                _baseUrl,
+                _token)));
 
             Receive<Start>(msg => Become(Started));
         }
@@ -31,8 +48,9 @@ namespace CreateAR.Snap
             // connect
             _connection.Tell(new ConnectionActor.Connect
             {
-                Url = "wss://trellis.enklu.com:10001/socket.io/?nosession=true&__sails_io_sdk_version=1.2.1&__sails_io_sdk_platform=browser&__sails_io_sdk_language=javascript&EIO=3&transport=websocket",
-                OrgId = "744d26da-959d-48ce-93b7-ec1071b39e24",
+                Url = $"{_baseUrl.Replace("http", "ws")}/socket.io/?nosession=true&__sails_io_sdk_version=1.2.1&__sails_io_sdk_platform=browser&__sails_io_sdk_language=javascript&EIO=3&transport=websocket",
+                OrgId = _orgId,
+                Token = _token,
                 Subscriber = Self
             });
         }
@@ -48,7 +66,11 @@ namespace CreateAR.Snap
                 _processor,
                 new ImageProcessingPipelineActor.StartPipeline
                 {
-                    Snap = new ImageProcessingPipelineActor.SnapRecord()
+                    Snap = new ImageProcessingPipelineActor.SnapRecord
+                    {
+                        OrgId = _orgId,
+                        InstanceId = _instanceId
+                    }
                 },
                 null);
         }

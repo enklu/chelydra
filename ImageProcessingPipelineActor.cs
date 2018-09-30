@@ -7,10 +7,16 @@ namespace CreateAR.Snap
     {
         public struct SnapRecord
         {
+            public string OrgId;
+
+            public string InstanceId;
+
             public string SrcPath;
 
             public SnapRecord(SnapRecord copy)
             {
+                OrgId = copy.OrgId;
+                InstanceId = copy.InstanceId;
                 SrcPath = copy.SrcPath;
             }
         }
@@ -54,11 +60,14 @@ namespace CreateAR.Snap
         private readonly IActorRef _composeRef;
         private readonly IActorRef _postRef;
 
-        public ImageProcessingPipelineActor()
+        public ImageProcessingPipelineActor(string baseUrl, string token)
         {
             _captureRef = Context.ActorOf(Props.Create(() => new CaptureActor(Self)));
             _composeRef = Context.ActorOf(Props.Create(() => new ComposeActor(Self)));
-            _postRef = Context.ActorOf(Props.Create(() => new PostActor(Self)));
+            _postRef = Context.ActorOf(Props.Create(() => new PostActor(
+                baseUrl,
+                token,
+                Self)));
 
             Receive<StartPipeline>(msg =>
             {

@@ -26,7 +26,12 @@ akka {
             using (var system = ActorSystem.Create("snap-controller", config))
             {
                 var app = system.ActorOf(
-                    Props.Create(() => new ApplicationActor()),
+                    Props.Create(() => new ApplicationActor(
+                        "http://localhost:9999",
+                        "744d26da-959d-48ce-93b7-ec1071b39e24",
+                        "instance",
+                        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3N1ZXIiOiJ0cmVsbGlzIiwiYXVkaWVuY2UiOiJ0cmVsbGlzIiwic3ViamVjdCI6IjczYWNjYTVhLTMxZTUtNGQwOC1iOTIyLWJjMzZlYzFiZmU1MSIsImV2ZW50UXVldWUiOiJRbVZ1YW1GdGFXNXpMVTFoWTBKdmIyc3RVSEp2TG14dlkyRnNfQXNzZXRzIiwiaWF0IjoxNTA3NzY0OTY0LCJleHAiOjE1MzkzMDA5NjR9.i7l6SWezgbnG6gS12lsiduUI391erfGPmT88Ry8ua9s"
+                    )),
                     "app");
 
                 app.Tell(new ApplicationActor.Start());
