@@ -44,6 +44,18 @@ namespace CreateAR.Snap
             //
         }
 
+        private class Socket_Disconnected
+        {
+            //
+        }
+
+        private class Reconnect
+        {
+            //
+        }
+
+        private string _url;
+
         private string _token;
 
         private string _orgId;
@@ -61,18 +73,69 @@ namespace CreateAR.Snap
 
         private void Waiting()
         {
+            Log.Information("State::Waiting.");
+            
             Receive<Connect>(msg => OnConnect(msg));
+        }
+
+        private void Disconnected()
+        {
+            Log.Information("State::Disconnected.");
+
+            if (null != _heartbeat)
+            {
+                _heartbeat.Cancel();
+                _heartbeat = null;
+            }
+
+            Receive<Reconnect>(msg => Become(Connecting));
+
+            Context.System.Scheduler.ScheduleTellOnce(
+                TimeSpan.FromSeconds(3),
+                Self,
+                new Reconnect(),
+                null);
         }
 
         private void Connecting()
         {
+            Log.Information("State::Connecting.");
+
             Receive<Socket_Connected>(msg => Become(Subscribed));
+            Receive<Socket_Disconnected>(msg => Become(Disconnected));
+
+            Log.Information("Starting connection to {0}.", _url);
+
+            // start connecting
+            _socket = new PureWebSocket(
+                _url,
+                new PureWebSocketOptions
+                {
+                    SendDelay = 100,
+                    DebugMode = false
+                });
+
+            _socket.OnStateChanged += Socket_OnStateChanged(Self);
+            _socket.OnMessage += Socket_OnMessage(_subscriber);
+            _socket.OnClosed += Socket_OnClosed(Self);
+            //_socket.OnSendFailed += Socket_OnSendFailed(Self);
+
+            try
+            {
+                _socket.Connect();
+            }
+            catch
+            {
+                // 
+            }
         }
 
         private void Subscribed()
         {
-            // listen for a heartbeat
+            Log.Information("State::Subscribed.");
+            
             Receive<Heartbeat>(msg => _socket.Send("40"));
+            Receive<Socket_Disconnected>(msg => Become(Disconnected));
 
             // start the heartbeat
             _heartbeat = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(
@@ -104,27 +167,12 @@ namespace CreateAR.Snap
 
         private void OnConnect(Connect msg)
         {
+            _url = msg.Url;
             _token = msg.Token;
             _orgId = msg.OrgId;
             _subscriber = msg.Subscriber;
 
             Become(Connecting);
-
-            Log.Information("Starting connection to {0}.", msg.Url);
-
-            // start connecting
-            _socket = new PureWebSocket(
-                msg.Url,
-                new PureWebSocketOptions
-                {
-                    SendDelay = 100
-                });
-
-            _socket.OnStateChanged += Socket_OnStateChanged(Self);
-            _socket.OnMessage += Socket_OnMessage(_subscriber);
-            _socket.OnClosed += Socket_OnClosed(Self);
-            _socket.OnSendFailed += Socket_OnSendFailed(Self);
-            _socket.Connect();
         }
 
         private SendFailed Socket_OnSendFailed(IActorRef connection)
@@ -141,7 +189,15 @@ namespace CreateAR.Snap
             return (WebSocketCloseStatus reason) => {
                 Log.Information("Socket closed : {0}.", reason);
 
-                // TODO: reconnect
+                if (_socket.State == WebSocketState.Open
+                    || _socket.State == WebSocketState.CloseReceived
+                    || _socket.State == WebSocketState.CloseSent)
+                {
+                    _socket.Dispose();
+                    _socket = null;
+                }
+
+                connection.Tell(new Socket_Disconnected());
             };
         }
 
@@ -150,10 +206,13 @@ namespace CreateAR.Snap
             return (string message) =>
             {
                 // ignore heartbeats
-                if (message == "40") {
+                if (!message.StartsWith("42")) {
                     return;
                 }
-                
+
+                message = message.Replace("42[\"message\",", "");
+                message = message.TrimEnd(']');
+
                 Log.Information("Received message : {0}.", message);
 
                 // deserialize and forward
@@ -162,6 +221,11 @@ namespace CreateAR.Snap
                     var msg = (TakeSnapMessage) JsonConvert.DeserializeObject(
                         message,
                         typeof(TakeSnapMessage));
+                    
+                    if (msg.Type != "takesnap")
+                    {
+                        return;
+                    }
 
                     subscriber.Tell(msg);
                 }
@@ -187,7 +251,7 @@ namespace CreateAR.Snap
                         "post"
                     ));
 
-                    // TODO: wait for response before assuming success
+                    // wait for response before assuming success
                     connection.Tell(new Socket_Connected());
                 }
             };

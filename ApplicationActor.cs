@@ -50,7 +50,11 @@ namespace CreateAR.Snap
 
                 _processor.Tell(new ImageProcessingPipelineActor.StartPipeline
                 {
-                    Snap = new ImageProcessingPipelineActor.SnapRecord()
+                    Snap = new ImageProcessingPipelineActor.SnapRecord
+                    {
+                        OrgId = _orgId,
+                        InstanceId = _instanceId
+                    }
                 });
             });
 
