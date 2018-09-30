@@ -162,7 +162,7 @@ namespace CreateAR.Snap
                 {
                     // subscribe to trellis events
                     Send(new WebSocketRequest(
-                        $"/v1/snap/{_orgId}/sna[/subscribe",
+                        $"/v1/org/{_orgId}/snap/subscribe",
                         "post"
                     ));
 
