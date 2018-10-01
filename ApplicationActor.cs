@@ -4,22 +4,44 @@ using System;
 
 namespace CreateAR.Snap
 {
+    /// <summary>
+    /// The main actor of the application.
+    /// </summary>
     public class ApplicationActor : ReceiveActor
     {
-        public class Start
-        {
-            //
-        }
-
+        /// <summary>
+        /// Reference to the connection to Trellis.
+        /// </summary>
         private IActorRef _connection;
+
+        /// <summary>
+        /// Reference to the image processor.
+        /// </summary>
         private IActorRef _processor;
 
+        /// <summary>
+        /// Base URL of Trellis.
+        /// </summary>
         private string _baseUrl;
 
+        /// <summary>
+        /// Organization id.
+        /// </summary>
         private string _orgId;
+
+        /// <summary>
+        /// Instance id.
+        /// </summary>
         private string _instanceId;
+
+        /// <summary>
+        /// Token.
+        /// </summary>
         private string _token;
 
+        /// <summary>
+        /// Constructor.
+        /// </summary>
         public ApplicationActor(
             string baseUrl,
             string orgId,
@@ -36,19 +58,17 @@ namespace CreateAR.Snap
                 _baseUrl,
                 _token)));
 
-            Receive<Start>(msg => Become(Started));
-        }
-
-        private void Started()
-        {
             Log.Information("Starting application.");
 
-            Receive<ConnectionActor.Ready>(msg => OnConnectionReady(msg));
+            // listen for the connection being ready
+            Receive<ConnectionActor.Ready>(msg => Log.Information("Connection online."));
+
+            // listen for the connection telling us to take a snapshot
             Receive<ConnectionActor.TakeSnapMessage>(msg =>
             {
                 Log.Information("Received TakeSnapMessage.");
 
-                _processor.Tell(new ImageProcessingPipelineActor.StartPipeline
+                _processor.Tell(new ImageProcessingPipelineActor.Start
                 {
                     Snap = new ImageProcessingPipelineActor.SnapRecord
                     {
@@ -66,26 +86,6 @@ namespace CreateAR.Snap
                 Token = _token,
                 Subscriber = Self
             });
-        }
-
-        private void OnConnectionReady(ConnectionActor.Ready msg)
-        {
-            Log.Information("Connection online.");
-
-            // STUB
-            /*Context.System.Scheduler.ScheduleTellRepeatedly(
-                TimeSpan.FromSeconds(1),
-                TimeSpan.FromSeconds(5),
-                _processor,
-                new ImageProcessingPipelineActor.StartPipeline
-                {
-                    Snap = new ImageProcessingPipelineActor.SnapRecord
-                    {
-                        OrgId = _orgId,
-                        InstanceId = _instanceId
-                    }
-                },
-                null);*/
         }
     }
 }

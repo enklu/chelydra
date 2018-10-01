@@ -9,12 +9,24 @@ using SixLabors.ImageSharp.Advanced;
 
 namespace CreateAR.Snap
 {
+    /// <summary>
+    /// Actor that composes an overlay with the capture.
+    /// </summary>
     public class ComposeActor : ReceiveActor
     {
+        /// <summary>
+        /// The actor listening for updates.
+        /// </summary>
         private readonly IActorRef _listener;
 
+        /// <summary>
+        /// The overlay, loaded once.
+        /// </summary>
         private Image<Rgba32> _overlay;
 
+        /// <summary>
+        /// Constructor.
+        /// </summary>
         public ComposeActor(IActorRef listener)
         {
             _listener = listener;
@@ -22,7 +34,7 @@ namespace CreateAR.Snap
             // load overlay
             _overlay = Image.Load("./overlays/overlay-1.png");
 
-            Receive<ImageProcessingPipelineActor.Compose>(msg =>
+            Receive<ImageProcessingPipelineActor.Start>(msg =>
             {
                 Log.Information("Starting compose.");
 
@@ -60,7 +72,7 @@ namespace CreateAR.Snap
                 }
 
                 // complete
-                _listener.Tell(new ImageProcessingPipelineActor.ComposeComplete
+                _listener.Tell(new ImageProcessingPipelineActor.Complete
                 {
                     Snap = msg.Snap
                 });

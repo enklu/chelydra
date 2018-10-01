@@ -7,21 +7,45 @@ using Serilog;
 
 namespace CreateAR.Snap
 {
+    /// <summary>
+    /// Actor that tells the camera to take a picture and writes it to disk.
+    /// </summary>
     public class CaptureActor : ReceiveActor
     {
+        /// <summary>
+        /// Message used internally when capture is complete.
+        /// </summary>
         private class Complete
         {
+            /// <summary>
+            /// Unique id.
+            /// </summary>
             public string Id;
         }
 
+        /// <summary>
+        /// Base directory in which to store images.
+        /// </summary>
         private const string BASE_DIR = "snaps";
 
+        /// <summary>
+        /// The actor listening for updates.
+        /// </summary>
         private readonly IActorRef _listener;
 
+        /// <summary>
+        /// Watches the filesystem for changes.
+        /// </summary>
         private readonly FileSystemWatcher _watcher;
 
+        /// <summary>
+        /// Tracks unique id of image to snap record.
+        /// </summary>
         private readonly Dictionary<string, ImageProcessingPipelineActor.SnapRecord> _records = new Dictionary<string, ImageProcessingPipelineActor.SnapRecord>();
 
+        /// <summary>
+        /// Constructor.
+        /// </summary>
         public CaptureActor(IActorRef listener)
         {
             _listener = listener;
@@ -37,7 +61,7 @@ namespace CreateAR.Snap
             _watcher.Changed += Watcher_OnCreated(Self);
             _watcher.EnableRaisingEvents = true;
 
-            Receive<ImageProcessingPipelineActor.Capture>(msg =>
+            Receive<ImageProcessingPipelineActor.Start>(msg =>
             {
                 Log.Information("Starting capture.");
 
@@ -58,7 +82,7 @@ namespace CreateAR.Snap
                 var record = _records[msg.Id];
                 _records.Remove(msg.Id);
 
-                _listener.Tell(new ImageProcessingPipelineActor.CaptureComplete
+                _listener.Tell(new ImageProcessingPipelineActor.Complete
                 {
                     Snap = new ImageProcessingPipelineActor.SnapRecord(record)
                     {
@@ -68,8 +92,14 @@ namespace CreateAR.Snap
             });
         }
 
+        /// <summary>
+        /// Called when the watcher gets an update. This will happen
+        /// asynchronously, so we must tell ourselves.
+        /// </summary>
+        /// <param name="self">A reference to self.</param>
         private FileSystemEventHandler Watcher_OnCreated(IActorRef self)
         {
+            // return a closure with a self reference
             return (object sender, FileSystemEventArgs evt) =>
             {
                 Log.Information("Snapshot exported from device.");

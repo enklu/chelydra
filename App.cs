@@ -5,8 +5,15 @@ using Serilog;
 
 namespace CreateAR.Snap
 {
+    /// <summary>
+    /// Entry point of application.
+    /// </summary>
     class App
     {
+        /// <summary>
+        /// Entry.
+        /// </summary>
+        /// <param name="args">Command line parameters.</param>
         static void Main(string[] args)
         {
             var log = new LoggerConfiguration()
@@ -33,8 +40,6 @@ akka {
                         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3N1ZXIiOiJ0cmVsbGlzIiwiYXVkaWVuY2UiOiJ0cmVsbGlzIiwic3ViamVjdCI6IjczYWNjYTVhLTMxZTUtNGQwOC1iOTIyLWJjMzZlYzFiZmU1MSIsImV2ZW50UXVldWUiOiJRbVZ1YW1GdGFXNXpMVTFoWTBKdmIyc3RVSEp2TG14dlkyRnNfQXNzZXRzIiwiaWF0IjoxNTA3NzY0OTY0LCJleHAiOjE1MzkzMDA5NjR9.i7l6SWezgbnG6gS12lsiduUI391erfGPmT88Ry8ua9s"
                     )),
                     "app");
-
-                app.Tell(new ApplicationActor.Start());
 
                 system.WhenTerminated.Wait();
             }
