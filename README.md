@@ -3,11 +3,13 @@
 Controls a DSLR camera based on events from Trellis.
 
 
-### Requirements
+### Prerequisites 
 
 * `gphoto2`
 * `dotnet`
 
-### Notes
+### Build and Run
 
-`gphoto2 --capture-image-and-download --force-overwrite --filename=foo.png`
+Build with `dotnet build`.
+
+Run with `dotnet run`.
