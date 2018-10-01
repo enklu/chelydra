@@ -12,4 +12,4 @@ Controls a DSLR camera based on events from Trellis.
 
 Build with `dotnet build`.
 
-Run with `dotnet run`.
+Run with `dotnet run -- -o [ORG ID] -t [TOKEN]`.

@@ -45,12 +45,10 @@ namespace CreateAR.Snap
         public ApplicationActor(
             string baseUrl,
             string orgId,
-            string instanceId,
             string token)
         {
             _baseUrl = baseUrl;
             _orgId = orgId;
-            _instanceId = instanceId;
             _token = token;
 
             _connection = Context.ActorOf(Props.Create(() => new ConnectionActor()));
@@ -70,7 +68,7 @@ namespace CreateAR.Snap
                     Snap = new ImageProcessingPipelineActor.SnapRecord
                     {
                         OrgId = _orgId,
-                        InstanceId = _instanceId
+                        InstanceId = msg.InstanceId
                     }
                 });
             });
