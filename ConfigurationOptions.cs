@@ -30,5 +30,11 @@ namespace CreateAR.Snap
             Required = true,
             HelpText = "Valid token.")]
         public string Token { get; set; }
+
+        /// <inheritdoc />
+        override public string ToString()
+        {
+            return $"[ConfigurationOptions Url={Url}, OrgId={OrgId}]";
+        }
     }
 }

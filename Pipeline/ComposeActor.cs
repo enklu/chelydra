@@ -39,7 +39,7 @@ namespace CreateAR.Snap
                 Log.Information("Starting compose.");
 
                 // load target
-                using (var image = Image.Load(msg.Snap.SrcPath))
+                using (var image = Image.Load<Rgba32>(msg.Snap.SrcPath))
                 {
                     if (image.Width != _overlay.Width
                         || image.Height != _overlay.Height)
@@ -59,24 +59,46 @@ namespace CreateAR.Snap
                             var color = span[x];
                             var overlayColor = overlaySpan[x];
                             span[x] = new Rgba32(
-                                color.R + overlayColor.R,
-                                color.G + overlayColor.G,
-                                color.B + overlayColor.B);
+                                (color.R + overlayColor.R) / 255f,
+                                (color.G + overlayColor.G) / 255f,
+                                (color.B + overlayColor.B) / 255f);
                         }
                     }
 
-                    using (var stream = File.Open(msg.Snap.SrcPath, FileMode.Truncate))
+                    using (var stream = File.Open(
+                        ProcessedSnapPath(msg.Snap.SrcPath),
+                        FileMode.CreateNew))
                     {
-                        image.SaveAsPng(stream);
+                        image.SaveAsJpeg(stream, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder()
+                        {
+                            Quality = 80
+                        });
                     }
                 }
+
+                // delete
+                File.Delete(msg.Snap.SrcPath);
 
                 // complete
                 _listener.Tell(new ImageProcessingPipelineActor.Complete
                 {
-                    Snap = msg.Snap
+                    Snap = new ImageProcessingPipelineActor.SnapRecord(msg.Snap)
+                    {
+                        SrcPath = ProcessedSnapPath(msg.Snap.SrcPath)
+                    }
                 });
             });
+        }
+
+        /// <summary>
+        /// Generates a path for the processed image.
+        /// </summary>
+        /// <param name="path">The original path.</param>
+        private static string ProcessedSnapPath(string path)
+        {
+            return Path.Combine(
+                Path.GetDirectoryName(path),
+                $"{Path.GetFileNameWithoutExtension(path)}.processed.jpg");
         }
     }
 }

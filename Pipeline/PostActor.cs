@@ -75,6 +75,12 @@ namespace CreateAR.Snap
             {
                 Log.Information("Http request returned.");
 
+                // finally, delete!
+                if (msg.Success)
+                {
+                    File.Delete(msg.Snap.SrcPath);
+                }
+
                 _listener.Tell(new ImageProcessingPipelineActor.Complete
                 {
                     Snap = msg.Snap

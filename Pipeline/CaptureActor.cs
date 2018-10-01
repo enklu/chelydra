@@ -77,9 +77,13 @@ namespace CreateAR.Snap
 
             Receive<Complete>(msg =>
             {
+                if (!_records.TryGetValue(msg.Id, out var record))
+                {
+                    return;
+                }
+
                 Log.Information("Capture complete.");
 
-                var record = _records[msg.Id];
                 _records.Remove(msg.Id);
 
                 _listener.Tell(new ImageProcessingPipelineActor.Complete
@@ -99,11 +103,9 @@ namespace CreateAR.Snap
         /// <param name="self">A reference to self.</param>
         private FileSystemEventHandler Watcher_OnCreated(IActorRef self)
         {
-            // return a closure with a self reference
+            // return a closure with a reference to Self
             return (object sender, FileSystemEventArgs evt) =>
             {
-                Log.Information("Snapshot exported from device.");
-
                 var id = Path.GetFileNameWithoutExtension(evt.FullPath);
 
                 self.Tell(new Complete

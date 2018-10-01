@@ -45,6 +45,8 @@ akka {
             {
                 result.WithParsed(pargs =>
                 {
+                    Log.Information("Arguments : {0}", pargs);
+
                     var app = system.ActorOf(
                     Props.Create(() => new ApplicationActor(
                         pargs.Url,

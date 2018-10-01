@@ -295,11 +295,12 @@ namespace CreateAR.Snap
                 
                 if (newState == WebSocketState.Open)
                 {
+                    var endpoint = $"/v1/org/{_orgId}/snap/subscribe";
+                    
+                    Log.Information($"Subscribing to {endpoint}.");
+                    
                     // subscribe to trellis events
-                    Send(new WebSocketRequest(
-                        $"/v1/org/{_orgId}/snap/subscribe",
-                        "post"
-                    ));
+                    Send(new WebSocketRequest(endpoint, "post"));
 
                     // wait for response before assuming success
                     connection.Tell(new Socket_Connected());
