@@ -7,70 +7,98 @@ using Newtonsoft.Json;
 
 namespace CreateAR.Snap
 {
-    public class ConnectionActor : ReceiveActor
+    /// <summary>
+    /// Actor that connects to Trellis.
+    /// </summary>
+    public partial class ConnectionActor : ReceiveActor
     {
+        /// <summary>
+        /// Message used to startup connection.
+        /// </summary>
         public class Connect
         {
+            /// <summary>
+            /// The URL.
+            /// </summary>
             public string Url;
 
+            /// <summary>
+            /// JWT.
+            /// </summary>
             public string Token;
 
+            /// <summary>
+            /// Organization.
+            /// </summary>
             public string OrgId;
 
+            /// <summary>
+            /// Listens for updates.
+            /// </summary>
             public IActorRef Subscriber;
         }
 
-        public class Ready
-        {
-            public string Url;
-        }
+        /// <summary>
+        /// Used internally to track heartbeats.
+        /// </summary>
+        private class Heartbeat { }
 
-        public class TakeSnapMessage
-        {
-            [JsonProperty("type")]
-            public string Type;
+        /// <summary>
+        /// Used internally when socket is connected.
+        /// </summary>
+        private class Socket_Connected { }
 
-            [JsonProperty("instanceId")]
-            public string InstanceId;
-        }
+        /// <summary>
+        /// Used internally when socket has disconnected.
+        /// </summary>
+        private class Socket_Disconnected { }
 
-        private class Heartbeat
-        {
-            //
-        }
+        /// <summary>
+        /// Used internally to reconnect.
+        /// </summary>
+        private class Reconnect { }
 
-        private class Socket_Connected
-        {
-            //
-        }
-
-        private class Socket_Disconnected
-        {
-            //
-        }
-
-        private class Reconnect
-        {
-            //
-        }
-
+        /// <summary>
+        /// Trellis URL to connect to.
+        /// </summary>
         private string _url;
 
+        /// <summary>
+        /// JWT.
+        /// </summary>
         private string _token;
 
+        /// <summary>
+        /// Organization id.
+        /// </summary>
         private string _orgId;
 
+        /// <summary>
+        /// Actor that wants updates.
+        /// </summary>
         private IActorRef _subscriber;
 
+        /// <summary>
+        /// Underlying socket.
+        /// </summary>
         private PureWebSocket _socket;
 
+        /// <summary>
+        /// Allows cancelation of heartbeat.
+        /// </summary>
         private ICancelable _heartbeat;
 
+        /// <summary>
+        /// Constructor.
+        /// </summary>
         public ConnectionActor()
         {
             Become(Waiting);
         }
 
+        /// <summary>
+        /// State listening for connect message.
+        /// </summary>
         private void Waiting()
         {
             Log.Information("State::Waiting.");
@@ -78,25 +106,9 @@ namespace CreateAR.Snap
             Receive<Connect>(msg => OnConnect(msg));
         }
 
-        private void Disconnected()
-        {
-            Log.Information("State::Disconnected.");
-
-            if (null != _heartbeat)
-            {
-                _heartbeat.Cancel();
-                _heartbeat = null;
-            }
-
-            Receive<Reconnect>(msg => Become(Connecting));
-
-            Context.System.Scheduler.ScheduleTellOnce(
-                TimeSpan.FromSeconds(3),
-                Self,
-                new Reconnect(),
-                null);
-        }
-
+        /// <summary>
+        /// State used while trying to connect.
+        /// </summary>
         private void Connecting()
         {
             Log.Information("State::Connecting.");
@@ -118,7 +130,6 @@ namespace CreateAR.Snap
             _socket.OnStateChanged += Socket_OnStateChanged(Self);
             _socket.OnMessage += Socket_OnMessage(_subscriber);
             _socket.OnClosed += Socket_OnClosed(Self);
-            //_socket.OnSendFailed += Socket_OnSendFailed(Self);
 
             try
             {
@@ -126,10 +137,13 @@ namespace CreateAR.Snap
             }
             catch
             {
-                // 
+                // socket close handler will be called
             }
         }
 
+        /// <summary>
+        /// State used when successfully subscribed.
+        /// </summary>
         private void Subscribed()
         {
             Log.Information("State::Subscribed.");
@@ -140,15 +154,41 @@ namespace CreateAR.Snap
             // start the heartbeat
             _heartbeat = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(
                 TimeSpan.FromSeconds(0),
-                TimeSpan.FromSeconds(3),
+                TimeSpan.FromSeconds(10),
                 Self,
                 new Heartbeat(),
                 null);
 
             // tell subscriber we're ready!
-            _subscriber.Tell(new Ready());
+            Log.Information("Connection is ready.");
         }
 
+        /// <summary>
+        /// State after socket is closed that waits to reconnect.
+        /// </summary>
+        private void Disconnected()
+        {
+            Log.Information("State::Disconnected.");
+
+            if (null != _heartbeat)
+            {
+                _heartbeat.Cancel();
+                _heartbeat = null;
+            }
+
+            Receive<Reconnect>(msg => Become(Connecting));
+
+            Context.System.Scheduler.ScheduleTellOnce(
+                TimeSpan.FromSeconds(3),
+                Self,
+                new Reconnect(),
+                null);
+        }
+
+        /// <summary>
+        /// Sends a message.
+        /// </summary>
+        /// <param name="request">The request.</param>
         private void Send(WebSocketRequest request)
         {
             if (null == request.Headers)
@@ -165,6 +205,10 @@ namespace CreateAR.Snap
             }
         }
 
+        /// <summary>
+        /// Called to start connecting.
+        /// </summary>
+        /// <param name="msg">The message.</param>
         private void OnConnect(Connect msg)
         {
             _url = msg.Url;
@@ -175,15 +219,11 @@ namespace CreateAR.Snap
             Become(Connecting);
         }
 
-        private SendFailed Socket_OnSendFailed(IActorRef connection)
-        {
-            return (string data, Exception ex) => {
-                Log.Warning("Could not send message: {0} -> {1}.", data, ex);
-
-                // TODO: tell parent
-            };
-        }
-
+        /// <summary>
+        /// Generates a listener for socket close events.
+        /// </summary>
+        /// <param name="connection">A refernce to the connection.</param>
+        /// <returns></returns>
         private Closed Socket_OnClosed(IActorRef connection)
         {
             return (WebSocketCloseStatus reason) => {
@@ -201,6 +241,11 @@ namespace CreateAR.Snap
             };
         }
 
+        /// <summary>
+        /// Generates a listener for socket message events.
+        /// </summary>
+        /// <param name="subscriber">The object listening.</param>
+        /// <returns></returns>
         private Message Socket_OnMessage(IActorRef subscriber)
         {
             return (string message) =>
@@ -236,6 +281,11 @@ namespace CreateAR.Snap
             };
         }
 
+        /// <summary>
+        /// Generates a listener for socket state change events.
+        /// </summary>
+        /// <param name="connection">The connection.</param>
+        /// <returns></returns>
         private StateChanged Socket_OnStateChanged(IActorRef connection)
         {
             return (WebSocketState newState, WebSocketState prevState) => {

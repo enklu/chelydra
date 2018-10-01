@@ -60,11 +60,8 @@ namespace CreateAR.Snap
 
             Log.Information("Starting application.");
 
-            // listen for the connection being ready
-            Receive<ConnectionActor.Ready>(msg => Log.Information("Connection online."));
-
             // listen for the connection telling us to take a snapshot
-            Receive<ConnectionActor.TakeSnapMessage>(msg =>
+            Receive<TakeSnapMessage>(msg =>
             {
                 Log.Information("Received TakeSnapMessage.");
 
