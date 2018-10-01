@@ -2,4 +2,3 @@ bin
 obj
 .vscode
 snaps/
-overlays/
