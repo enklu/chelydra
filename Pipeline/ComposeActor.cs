@@ -6,6 +6,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using SixLabors.ImageSharp.Advanced;
+using System.Collections.Generic;
 
 namespace CreateAR.Snap
 {
@@ -15,14 +16,19 @@ namespace CreateAR.Snap
     public class ComposeActor : ReceiveActor
     {
         /// <summary>
+        /// Base directory for overlays.
+        /// </summary>
+        private const string OVERLAY_BASE = "./overlays";
+
+        /// <summary>
         /// The actor listening for updates.
         /// </summary>
         private readonly IActorRef _listener;
 
         /// <summary>
-        /// The overlay, loaded once.
+        /// Caches the overlays.
         /// </summary>
-        private Image<Rgba32> _overlay;
+        private readonly Dictionary<string, Image<Rgba32>> _overlays = new Dictionary<string, Image<Rgba32>>();
 
         /// <summary>
         /// Constructor.
@@ -31,63 +37,111 @@ namespace CreateAR.Snap
         {
             _listener = listener;
 
+            // watch
+            var watcher = new FileSystemWatcher(OVERLAY_BASE);
+            watcher.Created += FileSystem_OnChanged;
+            watcher.Changed += FileSystem_OnChanged;
+            watcher.Deleted += FileSystem_OnChanged;
+            watcher.EnableRaisingEvents = true;
+
+            Receive<ImageProcessingPipelineActor.Start>(msg => Process(msg));
+        }
+
+        /// <summary>
+        /// Processes a snap.
+        /// </summary>
+        /// <param name="msg">The message received.</param>
+        private void Process(ImageProcessingPipelineActor.Start msg)
+        {
+            Log.Information("Starting compose.");
+
             // load overlay
-            _overlay = Image.Load("./overlays/overlay-1.png");
+            var overlay = GetOverlay(msg.Snap.InstanceId);
 
-            Receive<ImageProcessingPipelineActor.Start>(msg =>
+            // load target
+            using (var image = Image.Load<Rgba32>(msg.Snap.SrcPath))
             {
-                Log.Information("Starting compose.");
-
-                // load target
-                using (var image = Image.Load<Rgba32>(msg.Snap.SrcPath))
+                if (image.Width != overlay.Width
+                    || image.Height != overlay.Height)
                 {
-                    if (image.Width != _overlay.Width
-                        || image.Height != _overlay.Height)
-                    {
-                        Log.Error($"Invalid image dimensions! Expected ${_overlay.Width}x${_overlay.Height} but got ${image.Width}x${image.Height}.");
-                        return;
-                    }
+                    Log.Error($"Invalid image dimensions! Expected ${overlay.Width}x${overlay.Height} but got ${image.Width}x${image.Height}.");
+                    return;
+                }
 
-                    // apply additive blend
-                    for (var y = 0; y < image.Height; y++)
-                    {
-                        var span = image.GetPixelRowSpan(y);
-                        var overlaySpan = _overlay.GetPixelRowSpan(y);
+                // apply additive blend
+                for (var y = 0; y < image.Height; y++)
+                {
+                    var span = image.GetPixelRowSpan(y);
+                    var overlaySpan = overlay.GetPixelRowSpan(y);
 
-                        for (var x = 0; x < image.Width; x++)
-                        {
-                            var color = span[x];
-                            var overlayColor = overlaySpan[x];
-                            span[x] = new Rgba32(
-                                (color.R + overlayColor.R) / 255f,
-                                (color.G + overlayColor.G) / 255f,
-                                (color.B + overlayColor.B) / 255f);
-                        }
-                    }
-
-                    using (var stream = File.Open(
-                        ProcessedSnapPath(msg.Snap.SrcPath),
-                        FileMode.CreateNew))
+                    for (var x = 0; x < image.Width; x++)
                     {
-                        image.SaveAsJpeg(stream, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder()
-                        {
-                            Quality = 80
-                        });
+                        var color = span[x];
+                        var overlayColor = overlaySpan[x];
+                        span[x] = new Rgba32(
+                            (color.R + overlayColor.R) / 255f,
+                            (color.G + overlayColor.G) / 255f,
+                            (color.B + overlayColor.B) / 255f);
                     }
                 }
 
-                // delete
-                File.Delete(msg.Snap.SrcPath);
-
-                // complete
-                _listener.Tell(new ImageProcessingPipelineActor.Complete
+                using (var stream = File.Open(
+                    ProcessedSnapPath(msg.Snap.SrcPath),
+                    FileMode.CreateNew))
                 {
-                    Snap = new ImageProcessingPipelineActor.SnapRecord(msg.Snap)
+                    image.SaveAsJpeg(stream, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder()
                     {
-                        SrcPath = ProcessedSnapPath(msg.Snap.SrcPath)
-                    }
-                });
+                        Quality = 80
+                    });
+                }
+            }
+
+            // delete
+            File.Delete(msg.Snap.SrcPath);
+
+            // complete
+            _listener.Tell(new ImageProcessingPipelineActor.Complete
+            {
+                Snap = new ImageProcessingPipelineActor.SnapRecord(msg.Snap)
+                {
+                    SrcPath = ProcessedSnapPath(msg.Snap.SrcPath)
+                }
             });
+        }
+
+        /// <summary>
+        /// Retrieves overlay.
+        /// </summary>
+        /// <param name="instanceId">The id of the overlay.</param>
+        /// <returns></returns>
+        private Image<Rgba32> GetOverlay(string instanceId)
+        {
+            if (!_overlays.TryGetValue(instanceId, out var overlay))
+            {
+                overlay = _overlays[instanceId] = Image.Load<Rgba32>(Path.Combine(
+                    OVERLAY_BASE,
+                    $"{instanceId}.png"
+                ));
+            }
+
+            return overlay;
+        }
+
+        /// <summary>
+        /// Called when there's a filesystem change to the overlay directory.
+        /// </summary>
+        private void FileSystem_OnChanged(
+            object sender,
+            FileSystemEventArgs evt)
+        {
+            Log.Information("Overlays updates.");
+
+            // kill all the cached overlays
+            foreach (var image in _overlays.Values)
+            {
+                image.Dispose();
+            }
+            _overlays.Clear();
         }
 
         /// <summary>

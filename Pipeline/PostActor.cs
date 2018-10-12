@@ -1,3 +1,5 @@
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Linq;
 using System.IO;
@@ -73,13 +75,42 @@ namespace CreateAR.Snap
             // received from self
             Receive<PostResult>(msg =>
             {
-                Log.Information("Http request returned.");
-
-                // finally, delete!
                 if (msg.Success)
                 {
-                    File.Delete(msg.Snap.SrcPath);
+                    // upload the thumb too
+                    if (!msg.Snap.ThumbUploaded)
+                    {
+                        Log.Information("Snap uploaded, thumb is up next.", msg.Snap);
+
+                        // POST thumb
+                        PostImage(
+                            msg.Snap.ThumbSrcPath,
+                            $"{_baseUrl}/v1/org/{msg.Snap.OrgId}/snap/{msg.Snap.InstanceId}/{msg.Snap.SnapId}",
+                            new ImageProcessingPipelineActor.SnapRecord(msg.Snap)
+                            {
+                                ThumbUploaded = true
+                            });
+
+                        return;
+                    }
                 }
+                else
+                {
+                    Log.Error("Could not upload file.", msg.Snap);
+
+                    _listener.Tell(new ImageProcessingPipelineActor.Complete
+                    {
+                        Snap = msg.Snap
+                    });
+
+                    return;
+                }
+
+                Log.Information("Thumb was uploaded.", msg.Snap);
+
+                // delete src
+                File.Delete(msg.Snap.SrcPath);
+                File.Delete(msg.Snap.ThumbSrcPath);
 
                 _listener.Tell(new ImageProcessingPipelineActor.Complete
                 {
@@ -90,61 +121,83 @@ namespace CreateAR.Snap
             // starts the action
             Receive<ImageProcessingPipelineActor.Start>(msg =>
             {
-                // allow timeout
-                var timeout = new CancellationTokenSource();
-                timeout.CancelAfter(TimeSpan.FromSeconds(TIMEOUT_SECS));
-
-                // prepare request
-                var multipartContent = new MultipartFormDataContent();
-                var stream = File.OpenRead(msg.Snap.SrcPath);
-                var content = new StreamContent(stream);
-                content.Headers.ContentDisposition = new System.Net.Http.Headers.ContentDispositionHeaderValue("form-data")
-                {
-                    // Trellis requires quotes
-                    Name = "\"file\"",
-                    FileName = "\"test.png\""
-                };
-                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
-                multipartContent.Add(content);
-
-                // construct the url
-                var url = $"{_baseUrl}/v1/org/{msg.Snap.OrgId}/snap/{msg.Snap.InstanceId}";
-
-                Log.Information($"Starting POST to {url}.");
-
-                _http
-                    .PostAsync(
-                        url,
-                        multipartContent)
-                    .ContinueWith(async responseMsg =>
-                    {
-                        var response = responseMsg.Result;
-                        var bodyString = await response.Content.ReadAsStringAsync();
-
-                        stream.Dispose();
-                        content.Dispose();
-                        multipartContent.Dispose();
-                        
-                        if (response.StatusCode == HttpStatusCode.OK)
-                        {
-                            return new PostResult
-                            {
-                                Snap = msg.Snap,
-                                Success = true
-                            };
-                        }
-                        else
-                        {
-                            return new PostResult
-                            {
-                                Snap = msg.Snap,
-                                Success = false
-                            };
-                        }
-                    }, timeout.Token)
-                    // instead of using await, PipeTo uses IActorRef::Tell
-                    .PipeTo(Self);
+                // post src
+                PostImage(
+                    msg.Snap.SrcPath,
+                    $"{_baseUrl}/v1/org/{msg.Snap.OrgId}/snap/{msg.Snap.InstanceId}",
+                    msg.Snap);
             });
+        }
+
+        /// <summary>
+        /// POSTs an image to an endpoint.
+        /// </summary>
+        /// <param name="srcPath">The path to the image.</param>
+        /// <param name="url">The URL to POST to.</param>
+        /// <param name="snap">The snap to pass along.</param>
+        private void PostImage(
+            string srcPath,
+            string url,
+            ImageProcessingPipelineActor.SnapRecord snap)
+        {
+            // allow timeout
+            var timeout = new CancellationTokenSource();
+            timeout.CancelAfter(TimeSpan.FromSeconds(TIMEOUT_SECS));
+
+            // prepare request
+            var multipartContent = new MultipartFormDataContent();
+            var stream = File.OpenRead(srcPath);
+            var content = new StreamContent(stream);
+            content.Headers.ContentDisposition = new System.Net.Http.Headers.ContentDispositionHeaderValue("form-data")
+            {
+                // Trellis requires quotes
+                Name = "\"file\"",
+                FileName = $"\"file.jpg\""
+            };
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+            multipartContent.Add(content);
+
+            Log.Information($"POST to {url}.", snap);
+
+            _http
+                .PostAsync(
+                    url,
+                    multipartContent)
+                .ContinueWith(async responseMsg =>
+                {
+                    var response = responseMsg.Result;
+                    var bodyString = await response.Content.ReadAsStringAsync();
+
+                    stream.Dispose();
+                    content.Dispose();
+                    multipartContent.Dispose();
+                    
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        // find snap id
+                        var json = JObject.Parse(bodyString);
+                        var id = json["body"]["id"].ToObject<string>();
+
+                        return new PostResult
+                        {
+                            Snap = new ImageProcessingPipelineActor.SnapRecord(snap)
+                            {
+                                SnapId = id
+                            },
+                            Success = true
+                        };
+                    }
+                    else
+                    {
+                        return new PostResult
+                        {
+                            Snap = snap,
+                            Success = false
+                        };
+                    }
+                }, timeout.Token)
+                // instead of using await, PipeTo uses IActorRef::Tell
+                .PipeTo(Self);
         }
     }
 }

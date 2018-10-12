@@ -24,9 +24,24 @@ namespace CreateAR.Snap
             public string InstanceId;
 
             /// <summary>
+            /// Id of the snap.
+            /// </summary>
+            public string SnapId;
+
+            /// <summary>
             /// The path to the image src.
             /// </summary>
             public string SrcPath;
+
+            /// <summary>
+            /// The path to the image thumb.
+            /// </summary>
+            public string ThumbSrcPath;
+
+            /// <summary>
+            /// True iff thumb has been uploaded.
+            /// </summary>
+            public bool ThumbUploaded;
 
             /// <summary>
             /// Copy constructor.
@@ -36,7 +51,10 @@ namespace CreateAR.Snap
             {
                 OrgId = copy.OrgId;
                 InstanceId = copy.InstanceId;
+                SnapId = copy.SnapId;
                 SrcPath = copy.SrcPath;
+                ThumbSrcPath = copy.ThumbSrcPath;
+                ThumbUploaded = copy.ThumbUploaded;
             }
         }
 
@@ -65,6 +83,11 @@ namespace CreateAR.Snap
         /// The composition actor.
         /// </summary>
         private readonly IActorRef _composeRef;
+
+        /// <summary>
+        /// The thumbnail actor.
+        /// </summary>
+        private readonly IActorRef _thumbActor;
         
         /// <summary>
         /// The POST actor.
@@ -78,6 +101,7 @@ namespace CreateAR.Snap
         {
             _captureRef = Context.ActorOf(Props.Create(() => new CaptureActor(Self)));
             _composeRef = Context.ActorOf(Props.Create(() => new ComposeActor(Self)));
+            _thumbActor = Context.ActorOf(Props.Create(() => new ThumbActor(Self)));
             _postRef = Context.ActorOf(Props.Create(() => new PostActor(
                 baseUrl,
                 token,
@@ -106,7 +130,16 @@ namespace CreateAR.Snap
                 }
                 else if (Sender == _composeRef)
                 {
-                    Log.Information("Moving along to post.", msg.Snap);
+                    Log.Information("Moving along to thumb.", msg.Snap);
+
+                    _thumbActor.Tell(new Start
+                    {
+                        Snap = msg.Snap
+                    });
+                }
+                else if (Sender == _thumbActor)
+                {
+                    Log.Information("Moving along to POST.", msg.Snap);
 
                     _postRef.Tell(new Start
                     {
