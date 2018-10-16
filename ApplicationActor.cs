@@ -30,11 +30,6 @@ namespace CreateAR.Snap
         private string _orgId;
 
         /// <summary>
-        /// Instance id.
-        /// </summary>
-        private string _instanceId;
-
-        /// <summary>
         /// Token.
         /// </summary>
         private string _token;
