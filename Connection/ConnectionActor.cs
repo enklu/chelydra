@@ -44,6 +44,11 @@ namespace CreateAR.Snap
         private class Heartbeat { }
 
         /// <summary>
+        /// Used internally to resubscribe every once in awhile.
+        /// </summary>
+        private class Resubscribe { }
+
+        /// <summary>
         /// Used internally when socket is connected.
         /// </summary>
         private class Socket_Connected { }
@@ -89,6 +94,11 @@ namespace CreateAR.Snap
         private ICancelable _heartbeat;
 
         /// <summary>
+        /// Resubscription.
+        /// </summary>
+        private ICancelable _resub;
+
+        /// <summary>
         /// Constructor.
         /// </summary>
         public ConnectionActor()
@@ -104,6 +114,14 @@ namespace CreateAR.Snap
             Log.Information("State::Waiting.");
             
             Receive<Connect>(msg => OnConnect(msg));
+
+            // periodically resubscribe
+            _resub = Context.System.Scheduler.ScheduleTellRepeatedlyCancelable(
+                TimeSpan.FromMinutes(60),
+                TimeSpan.FromMinutes(60),
+                Self,
+                new Resubscribe(),
+                null);
         }
 
         /// <summary>
@@ -149,6 +167,7 @@ namespace CreateAR.Snap
             Log.Information("State::Subscribed.");
             
             Receive<Heartbeat>(msg => _socket.Send("40"));
+            Receive<Resubscribe>(msg => SendSubscribe());
             Receive<Socket_Disconnected>(msg => Become(Disconnected));
 
             // start the heartbeat
@@ -295,17 +314,25 @@ namespace CreateAR.Snap
                 
                 if (newState == WebSocketState.Open)
                 {
-                    var endpoint = $"/v1/org/{_orgId}/snap/subscribe";
-                    
-                    Log.Information($"Subscribing to {endpoint}.");
-                    
-                    // subscribe to trellis events
-                    Send(new WebSocketRequest(endpoint, "post"));
+                    // sub!
+                    SendSubscribe();
 
-                    // wait for response before assuming success
                     connection.Tell(new Socket_Connected());
                 }
             };
+        }
+
+        /// <summary>
+        /// Sends subscribe message.
+        /// </summary>
+        private void SendSubscribe()
+        {
+            var endpoint = $"/v1/org/{_orgId}/snap/subscribe";
+            
+            Log.Information($"Subscribing to {endpoint}.");
+            
+            // subscribe to trellis events
+            Send(new WebSocketRequest(endpoint, "post"));
         }
     }
 }
