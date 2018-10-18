@@ -57,7 +57,7 @@ namespace CreateAR.Snap
 
             _watcher = new FileSystemWatcher(BASE_DIR);
             _watcher.Filter = "*.*";
-            _watcher.NotifyFilter = NotifyFilters.CreationTime;
+            _watcher.NotifyFilter = NotifyFilters.LastWrite;
             _watcher.Changed += Watcher_OnCreated(Self);
             _watcher.EnableRaisingEvents = true;
 
@@ -70,9 +70,10 @@ namespace CreateAR.Snap
 
                 // start capture
                 var process = new Process();
-                process.StartInfo.FileName = "gphoto2";
-                process.StartInfo.Arguments = $"--capture-image-and-download --force-overwrite --filename={BASE_DIR}/{id}.jpg";
+                process.StartInfo.FileName = "captura-cli";
+                process.StartInfo.Arguments = $"shot --source screen:0 --file {BASE_DIR}/{id}.jpg";
                 process.Start();
+                process.WaitForExit();
             });
 
             Receive<Complete>(msg =>
