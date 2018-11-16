@@ -126,7 +126,7 @@ namespace CreateAR.Snap
         {
             if (!_overlays.TryGetValue(instanceId, out var overlays))
             {
-                overlays = LoadOverlays(instanceId);
+                overlays = _overlays[instanceId] = LoadOverlays(instanceId);
             }
 
             return ChooseOverlay(overlays);
