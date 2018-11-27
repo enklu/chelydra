@@ -145,6 +145,7 @@ namespace CreateAR.Snap
                 var images = Directory
                     .GetFiles(path)
                     .Select(f => {
+                        // don't kill entire actor if an image can't be loaded
                         try
                         {
                             return Image.Load(f);
@@ -161,6 +162,8 @@ namespace CreateAR.Snap
 
                 return images;
             }
+
+            Log.Warning($"Could not find any overlays for instanceId '{instanceId}'.");
 
             return new List<Image<Rgba32>>();
         }
