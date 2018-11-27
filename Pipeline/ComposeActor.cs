@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using Akka.Actor;
 using Serilog;
 using SixLabors.ImageSharp;
@@ -16,6 +17,12 @@ namespace CreateAR.Snap
     public class ComposeActor : ReceiveActor
     {
         /// <summary>
+        /// PRNG for choosing an overlay.
+        /// </summary>
+        /// <returns></returns>
+        private static readonly Random RANDOM = new Random();
+
+        /// <summary>
         /// Base directory for overlays.
         /// </summary>
         private const string OVERLAY_BASE = "./overlays";
@@ -28,7 +35,7 @@ namespace CreateAR.Snap
         /// <summary>
         /// Caches the overlays.
         /// </summary>
-        private readonly Dictionary<string, Image<Rgba32>> _overlays = new Dictionary<string, Image<Rgba32>>();
+        private readonly Dictionary<string, List<Image<Rgba32>>> _overlays = new Dictionary<string, List<Image<Rgba32>>>();
 
         /// <summary>
         /// Constructor.
@@ -39,6 +46,7 @@ namespace CreateAR.Snap
 
             // watch
             var watcher = new FileSystemWatcher(OVERLAY_BASE);
+            watcher.IncludeSubdirectories = true;
             watcher.Created += FileSystem_OnChanged;
             watcher.Changed += FileSystem_OnChanged;
             watcher.Deleted += FileSystem_OnChanged;
@@ -116,15 +124,61 @@ namespace CreateAR.Snap
         /// <returns></returns>
         private Image<Rgba32> GetOverlay(string instanceId)
         {
-            if (!_overlays.TryGetValue(instanceId, out var overlay))
+            if (!_overlays.TryGetValue(instanceId, out var overlays))
             {
-                overlay = _overlays[instanceId] = Image.Load<Rgba32>(Path.Combine(
-                    OVERLAY_BASE,
-                    $"{instanceId}.png"
-                ));
+                overlays = _overlays[instanceId] = LoadOverlays(instanceId);
             }
 
-            return overlay;
+            return ChooseOverlay(overlays);
+        }
+
+        /// <summary>
+        /// Loads all overlays for an instance id.
+        /// </summary>
+        /// <param name="instanceId">The instance id.</param>
+        /// <returns></returns>
+        private List<Image<Rgba32>> LoadOverlays(string instanceId)
+        {
+            var path = Path.Combine(OVERLAY_BASE, instanceId);
+            if (Directory.Exists(path))
+            {
+                var images = Directory
+                    .GetFiles(path)
+                    .Select(f => {
+                        try
+                        {
+                            return Image.Load(f);
+                        }
+                        catch
+                        {
+                            return null;
+                        }
+                    })
+                    .Where(i => null != i)
+                    .ToList();
+
+                Log.Information($"Loaded {images.Count} overlays for instance '{instanceId}'.");
+
+                return images;
+            }
+
+            return new List<Image<Rgba32>>();
+        }
+
+        /// <summary>
+        /// Returns a random overlay from a list of overlays.
+        /// </summary>
+        /// <param name="overlays">The overlays to choose from.</param>
+        /// <returns></returns>
+        private Image<Rgba32> ChooseOverlay(List<Image<Rgba32>> overlays)
+        {
+            var len = overlays.Count;
+            if (0 == len)
+            {
+                return null;
+            }
+
+            return overlays[(int) Math.Floor(RANDOM.NextDouble() * len)];
         }
 
         /// <summary>
@@ -134,13 +188,14 @@ namespace CreateAR.Snap
             object sender,
             FileSystemEventArgs evt)
         {
-            Log.Information("Overlays updates.");
+            Log.Information("Overlays updated. Releasing all overlays.");
 
             // kill all the cached overlays
-            foreach (var image in _overlays.Values)
+            foreach (var overlays in _overlays.Values)
             {
-                image.Dispose();
+                overlays.ForEach(o => o.Dispose());
             }
+
             _overlays.Clear();
         }
 

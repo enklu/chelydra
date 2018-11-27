@@ -2,5 +2,7 @@ bin
 obj
 .vscode
 snaps/
+overlays/
 *.sh
 *.DS_STORE
+*~
