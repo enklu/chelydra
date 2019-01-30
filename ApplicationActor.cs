@@ -56,7 +56,7 @@ namespace CreateAR.Snap
             // listen for the connection telling us to take a snapshot
             Receive<TakeSnapMessage>(msg =>
             {
-                Log.Information("Received TakeSnapMessage.");
+                Log.Information($"Received TakeSnapMessage : {msg}.");
 
                 _processor.Tell(new ImageProcessingPipelineActor.Start
                 {

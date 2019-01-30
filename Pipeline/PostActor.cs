@@ -85,7 +85,7 @@ namespace CreateAR.Snap
                         // POST thumb
                         PostImage(
                             msg.Snap.ThumbSrcPath,
-                            $"{_baseUrl}/v1/org/{msg.Snap.OrgId}/snap/{msg.Snap.InstanceId}/{msg.Snap.SnapId}",
+                            $"{_baseUrl}/v1/org/{msg.Snap.OrgId}/snap/{msg.Snap.InstanceId}/{msg.Snap.SnapId}?tag={msg.Snap.Tag}",
                             new ImageProcessingPipelineActor.SnapRecord(msg.Snap)
                             {
                                 ThumbUploaded = true

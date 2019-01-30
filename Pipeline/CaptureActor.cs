@@ -87,6 +87,8 @@ namespace CreateAR.Snap
 
                 _records.Remove(msg.Id);
 
+                
+
                 _listener.Tell(new ImageProcessingPipelineActor.Complete
                 {
                     Snap = new ImageProcessingPipelineActor.SnapRecord(record)

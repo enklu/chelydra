@@ -63,18 +63,26 @@ namespace CreateAR.Snap
         {
             Log.Information("Starting compose.");
 
+            // slice it
+            var offsetX = 130;
+            var offsetY = 78;
+            var width = 1396;
+            var height = 930;
+
             // load overlay
             var overlay = GetOverlay(msg.Snap.InstanceId);
 
-            // load target
+            if (width != overlay.Width || height != overlay.Height)
+            {
+                Log.Error($"Invalid image dimensions! Expected ${width}x${height} but got ${overlay.Width}x${overlay.Height}.");
+                return;
+            }
+
+            // load src
             using (var image = Image.Load<Rgba32>(msg.Snap.SrcPath))
             {
-                if (image.Width != overlay.Width
-                    || image.Height != overlay.Height)
-                {
-                    Log.Error($"Invalid image dimensions! Expected ${overlay.Width}x${overlay.Height} but got ${image.Width}x${image.Height}.");
-                    return;
-                }
+                image.Mutate(ctx => ctx.Crop(new SixLabors.Primitives.Rectangle(
+                    offsetX, offsetY, width, height)));
 
                 // apply additive blend
                 for (var y = 0; y < image.Height; y++)

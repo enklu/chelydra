@@ -24,6 +24,11 @@ namespace CreateAR.Snap
             public string InstanceId;
 
             /// <summary>
+            /// The tag to upload with.
+            /// </summary>
+            public string Tag;
+
+            /// <summary>
             /// Id of the snap.
             /// </summary>
             public string SnapId;
@@ -51,6 +56,7 @@ namespace CreateAR.Snap
             {
                 OrgId = copy.OrgId;
                 InstanceId = copy.InstanceId;
+                Tag = copy.Tag;
                 SnapId = copy.SnapId;
                 SrcPath = copy.SrcPath;
                 ThumbSrcPath = copy.ThumbSrcPath;

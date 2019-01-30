@@ -18,5 +18,16 @@ namespace CreateAR.Snap
         /// </summary>
         [JsonProperty("instanceId")]
         public string InstanceId;
+
+        /// <summary>
+        /// The tag to upload the image with.
+        /// </summary>
+        [JsonProperty("tag")]
+        public string Tag;
+
+        override public string ToString()
+        {
+            return $"[TakeSnapMessage Type={Type}, InstanceId={InstanceId}, Tag={Tag}]";
+        }
     }
 }
