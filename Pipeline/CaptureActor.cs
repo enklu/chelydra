@@ -29,6 +29,11 @@ namespace CreateAR.Snap
         private const string BASE_DIR = "snaps";
 
         /// <summary>
+        /// Base directory in which to store images by timestamp.
+        /// </summary>
+        private const string TIMESTAMP_DIR = "snaps.timestamped";
+
+        /// <summary>
         /// The actor listening for updates.
         /// </summary>
         private readonly IActorRef _listener;
@@ -53,6 +58,11 @@ namespace CreateAR.Snap
             if (!Directory.Exists(BASE_DIR))
             {
                 Directory.CreateDirectory(BASE_DIR);
+            }
+
+            if (!Directory.Exists(TIMESTAMP_DIR))
+            {
+                Directory.CreateDirectory(TIMESTAMP_DIR);
             }
 
             _watcher = new FileSystemWatcher(BASE_DIR);
@@ -87,8 +97,6 @@ namespace CreateAR.Snap
 
                 _records.Remove(msg.Id);
 
-                
-
                 _listener.Tell(new ImageProcessingPipelineActor.Complete
                 {
                     Snap = new ImageProcessingPipelineActor.SnapRecord(record)
@@ -110,6 +118,14 @@ namespace CreateAR.Snap
             return (object sender, FileSystemEventArgs evt) =>
             {
                 var id = Path.GetFileNameWithoutExtension(evt.FullPath);
+
+                // copy to directory with timestamp
+                File.Copy(
+                    evt.FullPath,
+                    Path.Combine(
+                        TIMESTAMP_DIR,
+                        $"{DateTime.Now.ToString("yyyy.MM.dd-H.mm.ss")}.jpg"
+                    ));
 
                 self.Tell(new Complete
                 {
