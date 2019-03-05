@@ -64,10 +64,10 @@ namespace CreateAR.Snap
             Log.Information("Starting compose.");
 
             // slice it
-            var offsetX = 130;
-            var offsetY = 78;
-            var width = 1396;
-            var height = 930;
+            var offsetX = 226;
+            var offsetY = 50;
+            var width = 1468;
+            var height = 978;
 
             // load overlay
             var overlay = GetOverlay(msg.Snap.InstanceId);
