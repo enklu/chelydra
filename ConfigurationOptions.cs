@@ -33,6 +33,15 @@ namespace CreateAR.Snap
         public string Token { get; set; }
 
         /// <summary>
+        /// Token for loggly.
+        /// </summary>
+        /// <value></value>
+        [Option('l', "loggly",
+            Required = true,
+            HelpText = "Loggly token.")]
+        public string LogglyToken { get; set; }
+
+        /// <summary>
         /// Dimensions of the screen to cut out.
         /// </summary>
         /// <value></value>

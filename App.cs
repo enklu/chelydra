@@ -26,11 +26,25 @@ namespace CreateAR.Snap
                 return;
             }
 
+            result.WithParsed(Start);
+        }
+
+        /// <summary>
+        /// Called with options ot start.
+        /// </summary>
+        /// <param name="options">The config options.</param>
+        static void Start(ConfigurationOptions options)
+        {
             // setup logging
             var log = new LoggerConfiguration()
-                .WriteTo.ColoredConsole()
-                .MinimumLevel.Information()
+                .WriteTo.ColoredConsole().MinimumLevel.Information()
+                .WriteTo
+                    .Loggly(
+                        customerToken: options.LogglyToken,
+                        tags: $"snap-controller,{Environment.GetEnvironmentVariable("ENV_NAME")}")
+                    .MinimumLevel.Information()
                 .CreateLogger();
+            
             Log.Logger = log;
             Log.Information("Logging initialized.");
 
@@ -44,23 +58,20 @@ akka {
             // setup actor system
             using (var system = ActorSystem.Create("snap-controller", config))
             {
-                result.WithParsed(pargs =>
-                {
-                    Log.Information("Arguments : {0}", pargs);
+                Log.Information("Arguments : {0}", options);
 
-                    var dims = pargs.Dimensions.ToArray();
+                var dims = options.Dimensions.ToArray();
 
-                    var app = system.ActorOf(
-                    Props.Create(() => new ApplicationActor(
-                        pargs.Url,
-                        pargs.OrgId,
-                        pargs.Token,
-                        dims[0],
-                        dims[1],
-                        dims[2],
-                        dims[3])),
-                    "app");
-                });
+                var app = system.ActorOf(
+                Props.Create(() => new ApplicationActor(
+                    options.Url,
+                    options.OrgId,
+                    options.Token,
+                    dims[0],
+                    dims[1],
+                    dims[2],
+                    dims[3])),
+                "app");
 
                 system.WhenTerminated.Wait();
             }
