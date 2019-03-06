@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Akka.Actor;
 using Akka.Configuration;
 using CommandLine;
@@ -47,11 +48,17 @@ akka {
                 {
                     Log.Information("Arguments : {0}", pargs);
 
+                    var dims = pargs.Dimensions.ToArray();
+
                     var app = system.ActorOf(
                     Props.Create(() => new ApplicationActor(
                         pargs.Url,
                         pargs.OrgId,
-                        pargs.Token)),
+                        pargs.Token,
+                        dims[0],
+                        dims[1],
+                        dims[2],
+                        dims[3])),
                     "app");
                 });
 

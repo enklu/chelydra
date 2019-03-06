@@ -92,16 +92,30 @@ namespace CreateAR.Snap
                 {
                     return;
                 }
-
-                Log.Information("Capture complete.");
-
                 _records.Remove(msg.Id);
+
+                var srcPath = $"{BASE_DIR}/{msg.Id}.jpg";
+                var timestampPath = Path.Combine(
+                    TIMESTAMP_DIR,
+                    $"{DateTime.Now.ToString("yyyy.MM.dd-H.mm.ss")}.jpg");
+
+                Log.Information($"Capture complete. File written to '{srcPath}'.");
+
+                // copy to directory with timestamp
+                try
+                {
+                    File.Copy(srcPath, timestampPath);
+                }
+                catch (Exception exception)
+                {
+                    Log.Error($"Could not copy {srcPath} to {timestampPath}: {exception}.");
+                }
 
                 _listener.Tell(new ImageProcessingPipelineActor.Complete
                 {
                     Snap = new ImageProcessingPipelineActor.SnapRecord(record)
                     {
-                        SrcPath = $"{BASE_DIR}/{msg.Id}.jpg"
+                        SrcPath = srcPath
                     }
                 });
             });
@@ -118,14 +132,6 @@ namespace CreateAR.Snap
             return (object sender, FileSystemEventArgs evt) =>
             {
                 var id = Path.GetFileNameWithoutExtension(evt.FullPath);
-
-                // copy to directory with timestamp
-                File.Copy(
-                    evt.FullPath,
-                    Path.Combine(
-                        TIMESTAMP_DIR,
-                        $"{DateTime.Now.ToString("yyyy.MM.dd-H.mm.ss")}.jpg"
-                    ));
 
                 self.Tell(new Complete
                 {

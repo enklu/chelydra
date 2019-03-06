@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using CommandLine;
 
 namespace CreateAR.Snap
@@ -30,6 +31,16 @@ namespace CreateAR.Snap
             Required = true,
             HelpText = "Valid token.")]
         public string Token { get; set; }
+
+        /// <summary>
+        /// Dimensions of the screen to cut out.
+        /// </summary>
+        /// <value></value>
+        [Option('d', "dimensions",
+            Required = true,
+            Separator = ',',
+            HelpText = "X, Y, Width, Height of cutout.")]
+        public IEnumerable<int> Dimensions { get; set; }
 
         /// <inheritdoc />
         override public string ToString()

@@ -103,10 +103,16 @@ namespace CreateAR.Snap
         /// <summary>
         /// Constructor.
         /// </summary>
-        public ImageProcessingPipelineActor(string baseUrl, string token)
+        public ImageProcessingPipelineActor(
+            string baseUrl,
+            string token,
+            int xOffset,
+            int yOffset,
+            int width,
+            int height)
         {
             _captureRef = Context.ActorOf(Props.Create(() => new CaptureActor(Self)));
-            _composeRef = Context.ActorOf(Props.Create(() => new ComposeActor(Self)));
+            _composeRef = Context.ActorOf(Props.Create(() => new ComposeActor(xOffset, yOffset, width, height, Self)));
             _thumbActor = Context.ActorOf(Props.Create(() => new ThumbActor(Self)));
             _postRef = Context.ActorOf(Props.Create(() => new PostActor(
                 baseUrl,

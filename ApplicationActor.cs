@@ -40,7 +40,11 @@ namespace CreateAR.Snap
         public ApplicationActor(
             string baseUrl,
             string orgId,
-            string token)
+            string token,
+            int xOffset,
+            int yOffset,
+            int width,
+            int height)
         {
             _baseUrl = baseUrl;
             _orgId = orgId;
@@ -49,7 +53,8 @@ namespace CreateAR.Snap
             _connection = Context.ActorOf(Props.Create(() => new ConnectionActor()));
             _processor = Context.ActorOf(Props.Create(() => new ImageProcessingPipelineActor(
                 _baseUrl,
-                _token)));
+                _token,
+                xOffset, yOffset, width, height)));
 
             Log.Information("Starting application.");
 

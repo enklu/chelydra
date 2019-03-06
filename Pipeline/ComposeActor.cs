@@ -28,6 +28,14 @@ namespace CreateAR.Snap
         private const string OVERLAY_BASE = "./overlays";
 
         /// <summary>
+        /// Section to cutout of screen.
+        /// </summary>
+        private readonly int _xOffset;
+        private readonly int _yOffset;
+        private readonly int _width;
+        private readonly int _height;
+
+        /// <summary>
         /// The actor listening for updates.
         /// </summary>
         private readonly IActorRef _listener;
@@ -40,8 +48,17 @@ namespace CreateAR.Snap
         /// <summary>
         /// Constructor.
         /// </summary>
-        public ComposeActor(IActorRef listener)
+        public ComposeActor(
+            int xOffset,
+            int yOffset,
+            int width,
+            int height,
+            IActorRef listener)
         {
+            _xOffset = xOffset;
+            _yOffset = yOffset;
+            _width = width;
+            _height = height;
             _listener = listener;
 
             // watch
@@ -63,18 +80,12 @@ namespace CreateAR.Snap
         {
             Log.Information("Starting compose.");
 
-            // slice it
-            var offsetX = 226;
-            var offsetY = 50;
-            var width = 1468;
-            var height = 978;
-
             // load overlay
             var overlay = GetOverlay(msg.Snap.InstanceId);
 
-            if (width != overlay.Width || height != overlay.Height)
+            if (_width != overlay.Width || _height != overlay.Height)
             {
-                Log.Error($"Invalid image dimensions! Expected ${width}x${height} but got ${overlay.Width}x${overlay.Height}.");
+                Log.Error($"Invalid image dimensions! Expected ${_width}x${_height} but got ${overlay.Width}x${overlay.Height}.");
                 return;
             }
 
@@ -82,7 +93,8 @@ namespace CreateAR.Snap
             using (var image = Image.Load<Rgba32>(msg.Snap.SrcPath))
             {
                 image.Mutate(ctx => ctx.Crop(new SixLabors.Primitives.Rectangle(
-                    offsetX, offsetY, width, height)));
+                    _xOffset, _yOffset,
+                    _width, _height)));
 
                 // apply additive blend
                 for (var y = 0; y < image.Height; y++)
