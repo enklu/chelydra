@@ -1,7 +1,8 @@
-# Snap Controller
+# Chelydra
 
-Controls a DSLR camera based on events from Trellis.
+`Chelydra` is the genus of the common snapping turtle-- and this is a Enklu-enabled DSLR controller. What do they have in common? THEY TAKE SNAPS.
 
+Controls a DSLR camera based on events from the Enklu cloud.
 
 ### Prerequisites 
 
@@ -12,7 +13,6 @@ Controls a DSLR camera based on events from Trellis.
 Build with `dotnet build`.
 
 Run with `dotnet run -- -o [ORG ID] -t [TOKEN]`.
-
 
 ### Publish
 
