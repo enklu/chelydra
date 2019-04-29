@@ -7,6 +7,8 @@ Controls a DSLR camera based on events from the Enklu cloud.
 ### Prerequisites 
 
 * `dotnet`
+* `captura-cli`
+* `gphoto` (optional) - support for this was removed, but will be coming back!
 
 ### Build and Run
 
