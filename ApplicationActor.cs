@@ -68,7 +68,9 @@ namespace CreateAR.Snap
                     Snap = new ImageProcessingPipelineActor.SnapRecord
                     {
                         OrgId = _orgId,
-                        InstanceId = msg.InstanceId
+                        InstanceId = msg.InstanceId,
+                        SessionId = msg.SessionId,
+                        UserId = msg.UserId
                     }
                 });
             });

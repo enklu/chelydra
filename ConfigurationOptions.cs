@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using CommandLine;
 
 namespace CreateAR.Snap
@@ -54,7 +55,7 @@ namespace CreateAR.Snap
         /// <inheritdoc />
         override public string ToString()
         {
-            return $"[ConfigurationOptions Url={Url}, OrgId={OrgId}]";
+            return $"[ConfigurationOptions Url={Url}, OrgId={OrgId}, Dimensions={Dimensions.ElementAt(0)},{Dimensions.ElementAt(1)},{Dimensions.ElementAt(2)},{Dimensions.ElementAt(3)}]";
         }
     }
 }

@@ -14,6 +14,16 @@ namespace CreateAR.Snap
         public struct SnapRecord
         {
             /// <summary>
+            /// The session identifier.
+            /// </summary>
+            public string SessionId;
+
+            /// <summary>
+            /// The user identifier.
+            /// </summary>
+            public string UserId;
+
+            /// <summary>
             /// Organization id.
             /// </summary>
             public string OrgId;
@@ -54,6 +64,8 @@ namespace CreateAR.Snap
             /// <param name="copy">The copy.</param>
             public SnapRecord(SnapRecord copy)
             {
+                SessionId = copy.SessionId;
+                UserId = copy.UserId;
                 OrgId = copy.OrgId;
                 InstanceId = copy.InstanceId;
                 Tag = copy.Tag;
@@ -89,11 +101,6 @@ namespace CreateAR.Snap
         /// The composition actor.
         /// </summary>
         private readonly IActorRef _composeRef;
-
-        /// <summary>
-        /// The thumbnail actor.
-        /// </summary>
-        private readonly IActorRef _thumbActor;
         
         /// <summary>
         /// The POST actor.
@@ -113,7 +120,6 @@ namespace CreateAR.Snap
         {
             _captureRef = Context.ActorOf(Props.Create(() => new CaptureActor(Self)));
             _composeRef = Context.ActorOf(Props.Create(() => new ComposeActor(xOffset, yOffset, width, height, Self)));
-            _thumbActor = Context.ActorOf(Props.Create(() => new ThumbActor(Self)));
             _postRef = Context.ActorOf(Props.Create(() => new PostActor(
                 baseUrl,
                 token,
@@ -143,15 +149,6 @@ namespace CreateAR.Snap
                 else if (Sender == _composeRef)
                 {
                     Log.Information("Moving along to thumb.", msg.Snap);
-
-                    _thumbActor.Tell(new Start
-                    {
-                        Snap = msg.Snap
-                    });
-                }
-                else if (Sender == _thumbActor)
-                {
-                    Log.Information("Moving along to POST.", msg.Snap);
 
                     _postRef.Tell(new Start
                     {
