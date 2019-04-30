@@ -75,42 +75,13 @@ namespace CreateAR.Snap
             // received from self
             Receive<PostResult>(msg =>
             {
-                if (msg.Success)
-                {
-                    // upload the thumb too
-                    if (!msg.Snap.ThumbUploaded)
-                    {
-                        Log.Information("Snap uploaded, thumb is up next.", msg.Snap);
-
-                        // POST thumb
-                        PostImage(
-                            msg.Snap.ThumbSrcPath,
-                            $"{_baseUrl}/v1/org/{msg.Snap.OrgId}/snap/{msg.Snap.InstanceId}/{msg.Snap.SnapId}?tag={msg.Snap.Tag}",
-                            new ImageProcessingPipelineActor.SnapRecord(msg.Snap)
-                            {
-                                ThumbUploaded = true
-                            });
-
-                        return;
-                    }
-                }
-                else
+                if (!msg.Success)
                 {
                     Log.Error("Could not upload file.", msg.Snap);
-
-                    _listener.Tell(new ImageProcessingPipelineActor.Complete
-                    {
-                        Snap = msg.Snap
-                    });
-
-                    return;
                 }
-
-                Log.Information("Thumb was uploaded.", msg.Snap);
 
                 // delete src
                 File.Delete(msg.Snap.SrcPath);
-                File.Delete(msg.Snap.ThumbSrcPath);
 
                 _listener.Tell(new ImageProcessingPipelineActor.Complete
                 {
@@ -146,27 +117,24 @@ namespace CreateAR.Snap
 
             // prepare request
             var multipartContent = new MultipartFormDataContent();
+            
+            // Session and User Content
+            multipartContent.Add(new StringContent(snap.SessionId), "\"sessionId\"");
+            multipartContent.Add(new StringContent(snap.UserId), "\"userId\"");
+            multipartContent.Add(new StringContent(snap.Tag), "\"tag\"");
+            
+            // File Content Last
             var stream = File.OpenRead(srcPath);
             var content = new StreamContent(stream);
-            content.Headers.ContentDisposition = new System.Net.Http.Headers.ContentDispositionHeaderValue("form-data")
-            {
-                // Trellis requires quotes
-                Name = "\"file\"",
-                FileName = $"\"file.jpg\""
-            };
-            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
-            multipartContent.Add(content);
-
+            multipartContent.Add(content, "\"file\"", "\"file.jpg\"");
+            
             Log.Information($"POST to {url}.", snap);
 
             _http
-                .PostAsync(
-                    url,
-                    multipartContent)
-                .ContinueWith(async responseMsg =>
+                .PostAsync(url, multipartContent)
+                .ContinueWith(responseMsg =>
                 {
                     var response = responseMsg.Result;
-                    var bodyString = await response.Content.ReadAsStringAsync();
 
                     stream.Dispose();
                     content.Dispose();
@@ -174,16 +142,9 @@ namespace CreateAR.Snap
                     
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
-                        // find snap id
-                        var json = JObject.Parse(bodyString);
-                        var id = json["body"]["id"].ToObject<string>();
-
                         return new PostResult
                         {
-                            Snap = new ImageProcessingPipelineActor.SnapRecord(snap)
-                            {
-                                SnapId = id
-                            },
+                            Snap = snap,
                             Success = true
                         };
                     }
@@ -196,7 +157,6 @@ namespace CreateAR.Snap
                         };
                     }
                 }, timeout.Token)
-                // instead of using await, PipeTo uses IActorRef::Tell
                 .PipeTo(Self);
         }
     }
