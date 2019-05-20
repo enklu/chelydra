@@ -5,6 +5,7 @@ using System.Linq;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using Akka.Actor;
 using Serilog;
@@ -116,30 +117,66 @@ namespace CreateAR.Snap
             timeout.CancelAfter(TimeSpan.FromSeconds(TIMEOUT_SECS));
 
             // prepare request
-            var multipartContent = new MultipartFormDataContent();
-            
-            // Session and User Content
-            multipartContent.Add(new StringContent(snap.SessionId), "\"sessionId\"");
-            multipartContent.Add(new StringContent(snap.UserId), "\"userId\"");
-            multipartContent.Add(new StringContent(snap.Tag), "\"tag\"");
-            
+            var userId = !string.IsNullOrEmpty(snap.UserId) ? snap.UserId : "";
+            var sessionId = !string.IsNullOrEmpty(snap.SessionId) ? snap.SessionId : "";
+            var tag = !string.IsNullOrEmpty(snap.Tag) ? snap.Tag : "";
+
+            var form = new MultipartFormDataContent();
+            var contentType = new MediaTypeHeaderValue("multipart/form-data");
+            form.Headers.ContentType = contentType;
+
+            var userContent = new StringContent(userId);
+            userContent.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
+            {
+                Name = "\"userId\"",
+            };
+            form.Add(userContent, "userId");
+
+            var sessionContent = new StringContent(sessionId);
+            sessionContent.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
+            {
+                Name = "\"sessionId\"",
+            };
+            form.Add(sessionContent, "sessionId");
+
+            var typeContent = new StringContent("still");
+            typeContent.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
+            {
+                Name = "\"type\"",
+            };
+            form.Add(typeContent, "type");
+
+            var tagContent = new StringContent(tag);
+            tagContent.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
+            {
+                Name = "\"tag\"",
+            };
+            form.Add(tagContent, "tag");
+
             // File Content Last
             var stream = File.OpenRead(srcPath);
             var content = new StreamContent(stream);
-            multipartContent.Add(content, "\"file\"", "\"file.jpg\"");
-            
+            content.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
+            {
+                // Trellis requires quotes 
+                Name = "\"file\"",
+                FileName = $"\"file.jpg\""
+            };
+            content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+            form.Add(content);
+
             Log.Information($"POST to {url}.", snap);
 
             _http
-                .PostAsync(url, multipartContent)
+                .PostAsync(url, form)
                 .ContinueWith(responseMsg =>
                 {
                     var response = responseMsg.Result;
 
-                    stream.Dispose();
-                    content.Dispose();
-                    multipartContent.Dispose();
-                    
+                    stream?.Dispose();
+                    content?.Dispose();
+                    form?.Dispose();
+
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
                         return new PostResult
