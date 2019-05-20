@@ -123,8 +123,10 @@ namespace CreateAR.Snap
 
             Log.Information($"Sending Post. File={srcPath}, Snap={snap}");
 
-            var form = new MultipartFormDataContent();
-            form.Headers.ContentType = new MediaTypeHeaderValue("multipart/form-data");
+            var form = new MultipartFormDataContent("Boundary7MA4YWxkTrZu0gW");
+            var contentType = new MediaTypeHeaderValue("multipart/form-data");
+            contentType.Parameters.Add(new NameValueHeaderValue("boundary", "Boundary7MA4YWxkTrZu0gW"));
+            form.Headers.ContentType = contentType;
 
             var userContent = new StringContent(userId);
             userContent.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
@@ -154,17 +156,15 @@ namespace CreateAR.Snap
             };
             form.Add(tagContent, "tag");
 
-            // File Content Last
-            var stream = File.OpenRead(srcPath);
-            var content = new StreamContent(stream);
-            content.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
+            var fileStream = new FileStream(srcPath, FileMode.Open);
+            var fileContent = new StreamContent(fileStream);
+            fileContent.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
             {
-                // Trellis requires quotes 
                 Name = "\"file\"",
-                FileName = $"\"file.jpg\""
+                FileName = "\"" + srcPath + "\""
             };
-            content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
-            form.Add(content, "file");
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+            form.Add(fileContent, "file");
 
             Log.Information($"POST to {url}.", snap);
 
@@ -174,8 +174,7 @@ namespace CreateAR.Snap
                 {
                     var response = responseMsg.Result;
 
-                    stream?.Dispose();
-                    content?.Dispose();
+                    fileStream?.Dispose();
                     form?.Dispose();
 
                     if (response.StatusCode == HttpStatusCode.OK)
