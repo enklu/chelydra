@@ -74,6 +74,11 @@ namespace CreateAR.Snap
                 ThumbSrcPath = copy.ThumbSrcPath;
                 ThumbUploaded = copy.ThumbUploaded;
             }
+
+            public override string ToString()
+            {
+                return $"[SnapRecord SessionId={SessionId}, UserId={UserId}, OrgId={OrgId}, InstanceId={InstanceId}, Tag={Tag}, SnapId={SnapId}, SrcPath={SrcPath}]";
+            }
         }
 
         /// <summary>

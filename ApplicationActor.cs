@@ -70,7 +70,8 @@ namespace CreateAR.Snap
                         OrgId = _orgId,
                         InstanceId = msg.InstanceId,
                         SessionId = msg.SessionId,
-                        UserId = msg.UserId
+                        UserId = msg.UserId,
+                        Tag = msg.Tag
                     }
                 });
             });

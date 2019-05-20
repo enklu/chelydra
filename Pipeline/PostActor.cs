@@ -121,9 +121,10 @@ namespace CreateAR.Snap
             var sessionId = !string.IsNullOrEmpty(snap.SessionId) ? snap.SessionId : "";
             var tag = !string.IsNullOrEmpty(snap.Tag) ? snap.Tag : "";
 
+            Log.Information($"Sending Post. File={srcPath}, Snap={snap}");
+
             var form = new MultipartFormDataContent();
-            var contentType = new MediaTypeHeaderValue("multipart/form-data");
-            form.Headers.ContentType = contentType;
+            form.Headers.ContentType = new MediaTypeHeaderValue("multipart/form-data");
 
             var userContent = new StringContent(userId);
             userContent.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
@@ -163,7 +164,7 @@ namespace CreateAR.Snap
                 FileName = $"\"file.jpg\""
             };
             content.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
-            form.Add(content);
+            form.Add(content, "file");
 
             Log.Information($"POST to {url}.", snap);
 
