@@ -81,8 +81,8 @@ namespace CreateAR.Snap
                     Log.Error("Could not upload file.", msg.Snap);
                 }
 
-                // delete src
-                File.Delete(msg.Snap.SrcPath);
+                // NOTE: OneDome wants to retain a copy of the composed image, so do not delete.
+                // File.Delete(msg.Snap.SrcPath);
 
                 _listener.Tell(new ImageProcessingPipelineActor.Complete
                 {
